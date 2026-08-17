@@ -30,10 +30,8 @@ fi
 
 log "Application of mouse stability fixes (MouseWarpOverride)..."
 wine reg add "HKCU\\Software\\Wine\\DirectInput" /v "MouseWarpOverride" /t REG_SZ /d "force" /f >/dev/null 2>&1
-# On force aussi le mode Windows XP, idéal pour les versions 2012-2015
 winecfg -v winxp >/dev/null 2>&1
 
-# ---------- 1. Chercher les exécutables présents ----------
 log "Executables found in the prefix:"
 mapfile -t EXES < <(find "$PREFIX_DIR/drive_c" -iname "*.exe" 2>/dev/null | grep -vi '\\windows\\' )
 for e in "${EXES[@]}"; do echo "  - $e" >&2; done
