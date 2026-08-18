@@ -64,7 +64,7 @@ mapfile -t EXES < <(find "$PREFIX_DIR/drive_c" -iname "*.exe" 2>/dev/null | grep
 for e in "${EXES[@]}"; do echo "  - $e" >&2; done
 
 if [ ${#EXES[@]} -eq 0 ]; then
-    warn "Aucun .exe d'Hexagon/Roblox trouvé dans le préfixe pour l'instant."
+    warn "No Hexagon/Roblox .exe found in the prefix for now."
     exit 0
 fi
 
