@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 #
 
-
 echo -e "\033[38;5;153m  __    __    __________   ___     ___        __        __  .__   __.  __    __  ___   ___\033[0m"
 echo -e "\033[38;5;159m |  |  |  | |   ____\\  \\ /  /    /   \\      |  |     |  | |  \\ |  | |  |  |  | \\  \\ /  / \033[0m"
 echo -e "\033[38;5;195m |  |__|  | |  |__    \\   /    /  ^  \\     |  |     |  | |   \\|  | |  |  |  |  \\  V  /  \033[0m"
 echo -e "\033[37m |   __   | |   __|    >   <    /  /_\\  \\    |  |     |  | |  . \`  | |  |  |  |   >   <   \033[0m"
 echo -e "\033[38;5;231m |  |  |  | |  |____ /  .  \\  /  _____  \\   |  \`----.|  | |  |\\   | |  \`--'  |  /  .  \\  \033[0m"
-echo -e "\033[97m |__|  |__| |_______/__/ \\__\\/__/     \\__\\  |_______||__| |__| \__|  \\______/  /__/ \\__\\\033[0m"
+echo -e "\033[97m |__|  |__| |_______/__/ \\__\\/__/     \\__\\  |_______||__| |__| \__|  \\______/  /__/ \__\\\033[0m"
 echo ""
 
 set -uo pipefail
@@ -16,16 +15,44 @@ PREFIX_DIR="${HOME}/.local/share/wineprefixes/hexagon"
 export WINEPREFIX="$PREFIX_DIR"
 
 log()  { echo -e "\033[1;36m[fix]\033[0m $*" >&2; }
-warn() { echo -e "\033[1;33m[fix][attention]\033[0m $*" >&2; }
-err()  { echo -e "\033[1;31m[fix][erreur]\033[0m $*" >&2; }
+warn() { echo -e "\033[1;33m[fix][warn]\033[0m $*" >&2; }
+err()  { echo -e "\033[1;31m[fix][error]\033[0m $*" >&2; }
 
 if [ ! -d "$PREFIX_DIR" ]; then
-    err "Prefix introuvable: $PREFIX_DIR"
-    exit 1
+    log "Prefix not found. Automatic creation of $PREFIX_DIR..."
+    mkdir -p "$PREFIX_DIR"
+    wineboot --init >/dev/null 2>&1
+    log "Prefix successfully created!"
 fi
 
+HAS_HEXAGON=false
 if find "$PREFIX_DIR/drive_c" -iname "*Hexagon*" 2>/dev/null | grep -q .; then
+    HAS_HEXAGON=true
     log "You already have Hexagon"
+fi
+
+if [ "$HAS_HEXAGON" = false ]; then
+    warn "Hexagon is not detected in the prefix."
+    log "download of HexagonPlayerLauncher.exe..."
+    
+    DOWNLOAD_DIR="${HOME}/Downloads"
+    mkdir -p "$DOWNLOAD_DIR"
+    INSTALLER_PATH="${DOWNLOAD_DIR}/HexagonPlayerLauncher.exe"
+    
+    if command -v curl >/dev/null 2>&1; then
+        curl -L "https://setup.hexagon.pw/HexagonPlayerLauncher.exe" -o "$INSTALLER_PATH"
+    elif command -v wget >/dev/null 2>&1; then
+        wget "https://setup.hexagon.pw/HexagonPlayerLauncher.exe" -O "$INSTALLER_PATH"
+    else
+        err "Neither curl nor wget are installed to download the file."
+        exit 1
+    fi
+    
+    log "Hexagon installer launch..."
+    wine "$INSTALLER_PATH"
+    
+    echo ""
+    read -rp "Press [Enter] once the Hexagon installation is complete..."
 fi
 
 log "Application of mouse stability fixes (MouseWarpOverride)..."
@@ -35,6 +62,11 @@ winecfg -v winxp >/dev/null 2>&1
 log "Executables found in the prefix:"
 mapfile -t EXES < <(find "$PREFIX_DIR/drive_c" -iname "*.exe" 2>/dev/null | grep -vi '\\windows\\' )
 for e in "${EXES[@]}"; do echo "  - $e" >&2; done
+
+if [ ${#EXES[@]} -eq 0 ]; then
+    warn "Aucun .exe d'Hexagon/Roblox trouvé dans le préfixe pour l'instant."
+    exit 0
+fi
 
 LAUNCHER_EXE=""
 for e in "${EXES[@]}"; do
@@ -51,7 +83,6 @@ for e in "${EXES[@]}"; do
         break
     fi
 done
-
 
 log "Searching for registered URL schemes (roblox/hexagon)..."
 CANDIDATES=(roblox-player roblox robloxplayer hexagon-player hexagon)
@@ -71,7 +102,6 @@ for scheme in "${CANDIDATES[@]}"; do
         fi
     fi
 done
-
 
 TARGET_EXE="$LAUNCHER_EXE"
 [ -z "$TARGET_EXE" ] && TARGET_EXE="$CLIENT_EXE"
@@ -95,7 +125,6 @@ Terminal=false
 NoDisplay=true
 MimeType=x-scheme-handler/${FOUND_SCHEME};
 EOF
-
 
 update-desktop-database "$DESKTOP_DIR" 2>/dev/null
 if command -v xdg-mime >/dev/null 2>&1; then
